@@ -1,4 +1,5 @@
 #include "CImg.h"
+#include <math.h>
 
 #define NUM_TOTAL_IMAGE 3
 
@@ -28,6 +29,14 @@ void show_result(const char *file_name[], Image *src)
     for (int i = 0; i < NUM_TOTAL_IMAGE; i++)
     {
         src[i].display(file_name[i]);
+    }
+}
+
+void save_result(const char *file_name[], Image *src)
+{
+    for (int i = 0; i < NUM_TOTAL_IMAGE; i++)
+    {
+        src[i].save(file_name[i]);
     }
 }
 
@@ -165,20 +174,41 @@ void histogram_equalization(Image *src)
     }
 }
 
+void log_transform(Image *src)
+{
+    // formula : y = ln(x + 1) * 255 / ln(256)
+    for (int h = 0; h < src->height(); h++)
+    {
+        for (int w = 0; w < src->width(); w++)
+        {
+            for (int channel = 0; channel < 3; channel++)
+            {
+                (*src)(w, h, 0, channel) = (int)(log((*src)(w, h, 0, channel) + 1) * 255 / log(256));
+            }
+        }
+    }
+}
+
 int main()
 {
     const char *file_name[NUM_TOTAL_IMAGE] = {"Data/1.png", "Data/2.png", "Data/3.png"};
+    const char *output_name[NUM_TOTAL_IMAGE] = {"result_1.png", "result_2.png", "result_3.png"};
     Image src[NUM_TOTAL_IMAGE];
+
     read_data(file_name, src);
 
     // first image
+    log_transform(&src[0]);
+    
     // second image
     median_filter(&src[1]);
 
     // third image
     inverse(&src[2]);
+    
 
-    show_result(file_name, src);
+    save_result(output_name, src);
+    show_result(output_name, src);
 
     return 0;
 }
