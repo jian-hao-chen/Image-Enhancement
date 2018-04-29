@@ -32,6 +32,17 @@ void show_result(const char *file_name[], Image *src)
     }
 }
 
+void show_histogram(Image *src)
+{
+    // show RGB histogram for debugging
+    Image temp;
+    for (int channel = 0; channel < 3; channel++)
+    {
+        temp = src->get_channel(channel).get_histogram(256, 0, 255);
+        temp.display_graph("Histogram", 3);
+    }
+}
+
 void save_result(const char *file_name[], Image *src)
 {
     for (int i = 0; i < NUM_TOTAL_IMAGE; i++)
@@ -189,6 +200,47 @@ void log_transform(Image *src)
     }
 }
 
+void contrast_stretch(Image *src)
+{
+    // first, find max and min value.
+    int max = 0;
+    int min = 256;
+    int temp;
+
+    for (int h = 0; h < src->height(); h++)
+    {
+        for (int w = 0; w < src->width(); w++)
+        {
+            for (int channel = 0; channel < 3; channel++)
+            {
+                temp = (*src)(w, h, 0, channel);
+                if (temp > max)
+                {
+                    max = temp;
+                }
+                if (temp < min)
+                {
+                    min = temp;
+                }
+            }
+        }
+    }
+
+    // second, do this conputation for each RGB value.
+    // formula : (x - min) * 255 / (max - min)
+    for (int h = 0; h < src->height(); h++)
+    {
+        for (int w = 0; w < src->width(); w++)
+        {
+            for (int channel = 0; channel < 3; channel++)
+            {
+                temp = (*src)(w, h, 0, channel);
+                (*src)(w, h, 0, channel) = (int)((temp - min) * 255.0 / (max - min));
+            }
+        }
+    }
+}
+
 int main()
 {
     const char *file_name[NUM_TOTAL_IMAGE] = {"Data/1.png", "Data/2.png", "Data/3.png"};
@@ -199,13 +251,16 @@ int main()
 
     // first image
     log_transform(&src[0]);
-    
+
     // second image
     median_filter(&src[1]);
 
     // third image
     inverse(&src[2]);
-    
+    show_histogram(&src[2]);
+    //contrast_stretch(&src[2]);
+    histogram_equalization(&src[2]);
+    show_histogram(&src[2]);
 
     save_result(output_name, src);
     show_result(output_name, src);
