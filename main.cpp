@@ -9,13 +9,6 @@ using namespace std;
 typedef CImg<int> Image;
 typedef struct Pixel Pixel;
 
-struct Pixel
-{
-    // color[0] = R, color[1] = G, color[2] = B
-    unsigned char color[3];
-    unsigned char Y;
-};
-
 void read_data(const char *file_name[], Image *dst)
 {
     for (int i = 0; i < NUM_TOTAL_IMAGE; i++)
@@ -39,7 +32,7 @@ void show_histogram(Image *src)
     for (int channel = 0; channel < 3; channel++)
     {
         temp = src->get_channel(channel).get_histogram(256, 0, 255);
-        temp.display_graph("Histogram", 3);
+        temp.display_graph("Histogram", 3, 1, "scale", 0, 255, "num",0,30000);
     }
 }
 
@@ -67,7 +60,7 @@ void inverse(Image *src)
 
 void bubble_sort(unsigned char *src, int length)
 {
-    // sort function for median_filter, compare Y value then swap the whole Pixel variable.
+    // sort function for median_filter.
     unsigned char temp;
     for (int i = 0; i < length; i++)
     {
@@ -111,8 +104,8 @@ void median_filter(Image *src)
                 {
                     for (int f_w = 0; f_w < 3; f_w++)
                     {
-                        int addr_w = w - 1 + f_w;
                         int addr_h = h - 1 + f_h;
+                        int addr_w = w - 1 + f_w;
                         filter[f_w + f_h * 3] = padding_src(addr_w, addr_h, 0, channel);
                     }
                 }
@@ -121,6 +114,37 @@ void median_filter(Image *src)
 
                 // the Median is the 5th value of array(filter[4]).
                 (*src)(w - 1, h - 1, 0, channel) = filter[4];
+            }
+        }
+    }
+}
+
+void gaussian_filter(Image *src)
+{
+    int filter[9] = {1, 2, 1,
+                     2, 4, 2,
+                     1, 2, 1};
+    Image temp = *src;
+
+    for (int channel = 0; channel < 3; channel++)
+    {
+        for (int h = 1; h < temp.height() - 1; h++)
+        {
+            for (int w = 1; w < temp.width() - 1; w++)
+            {
+                int sum = 0, idx = 0;
+
+                for (int f_h = h - 1; f_h < h + 2; f_h++)
+                {
+                    for (int f_w = w - 1; f_w < w + 2; f_w++)
+                    {
+                        sum += filter[idx] * temp(f_w, f_h, 0, channel);
+                        idx++;
+                    }
+                }
+
+                sum = sum / 16;
+                (*src)(w, h, 0, channel) = sum;
             }
         }
     }
@@ -188,13 +212,16 @@ void histogram_equalization(Image *src)
 void log_transform(Image *src)
 {
     // formula : y = ln(x + 1) * 255 / ln(256)
+    int value;
+
     for (int h = 0; h < src->height(); h++)
     {
         for (int w = 0; w < src->width(); w++)
         {
             for (int channel = 0; channel < 3; channel++)
             {
-                (*src)(w, h, 0, channel) = (int)(log((*src)(w, h, 0, channel) + 1) * 255 / log(256));
+                value = (*src)(w, h, 0, channel) + 1;
+                (*src)(w, h, 0, channel) = (int)(log(value) * 255.0 / log(256));
             }
         }
     }
@@ -250,17 +277,14 @@ int main()
     read_data(file_name, src);
 
     // first image
-    log_transform(&src[0]);
+    gaussian_filter(&src[0]);
 
     // second image
     median_filter(&src[1]);
 
     // third image
     inverse(&src[2]);
-    show_histogram(&src[2]);
-    //contrast_stretch(&src[2]);
-    histogram_equalization(&src[2]);
-    show_histogram(&src[2]);
+    contrast_stretch(&src[2]);
 
     save_result(output_name, src);
     show_result(output_name, src);
